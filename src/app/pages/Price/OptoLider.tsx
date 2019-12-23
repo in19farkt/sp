@@ -37,47 +37,26 @@ type ResultProduct = Record<Column, string | number>;
 
 export function OptoLider() {
   const [all, setAll] = React.useState<File | null>(null);
-  const [parts, setParts] = React.useState<File[] | null>(null);
 
   const handleAllSelect = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files && event.target.files[0];
     setAll(file);
   }, []);
 
-  const handlePartsSelect = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files && Array.from<File>(event.target.files);
-    setParts(file);
-  }, []);
-
   React.useEffect(() => {
     (async () => {
-      if (!all || !parts?.length) {
+      if (!all) {
         return;
       }
 
       const allWb = await readFile(all);
-      const partsWb = await Promise.all(parts.map(part => readFile(part)));
 
       let allResultJson = uniqWith(
         (a, b) => a[Column.VendorCode] === b[Column.VendorCode],
         calcResultJson(allWb),
       );
 
-      const partsResultJson = uniqWith(
-        (a, b) => a[Column.VendorCode] === b[Column.VendorCode],
-        partsWb.map(wb => calcResultJson(wb)).flat(),
-      );
-
-      allResultJson = allResultJson
-        .map(product => {
-          const index = partsResultJson.findIndex(
-            item => item[Column.VendorCode] === product[Column.VendorCode],
-          );
-
-          return index !== -1 ? partsResultJson.splice(index, 1)[0] : product;
-        })
-        .concat(partsResultJson)
-        .filter(product => !!product[Column.Price]);
+      allResultJson = allResultJson.filter(product => !!product[Column.Price]);
 
       const resultSheet = XLSX.utils.json_to_sheet(allResultJson, { skipHeader: true });
 
@@ -86,7 +65,7 @@ export function OptoLider() {
 
       savePriceAsCSV(resultWb, 'ОптоЛидер');
     })();
-  }, [all, parts]);
+  }, [all]);
 
   return (
     <Grid container spacing={2}>
@@ -95,12 +74,6 @@ export function OptoLider() {
       </Grid>
       <Grid item xs={8}>
         <input type="file" onChange={handleAllSelect} accept=".xls" />
-      </Grid>
-      <Grid item xs={4}>
-        <Typography>Выгрузка по частям (несколько файлов .xls):</Typography>
-      </Grid>
-      <Grid item xs={8}>
-        <input type="file" onChange={handlePartsSelect} accept=".xls" multiple />
       </Grid>
     </Grid>
   );
