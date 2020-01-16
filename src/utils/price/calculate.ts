@@ -7,11 +7,11 @@ export function calculateDescription(desc: string) {
   return desc.replace(/\//g, '\\').slice(0, maxDescriptionLength);
 }
 
-export function calculateFeatures(value: string, filterLineRegExp?: RegExp) {
+export function calculateFeatures(value: string, filterLineRegExp?: RegExp, separator?: string) {
   return (
     value &&
     value
-      .split('\n')
+      .split(separator || '\n')
       .map(item => calculateDescription(item.trim()))
       .filter(item => !!item && !filterLineRegExp?.test(item))
       .join('; ')

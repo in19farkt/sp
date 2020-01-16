@@ -16,7 +16,7 @@ type Product = {
   Наименование: string;
   'Цена, руб.': number;
   'Название раздела': string;
-  ЦВЕТ?: string;
+  ЦВЕТ?: string | number;
   Описание?: string;
   'Все характеристики'?: string;
   Изображение: string;
@@ -31,6 +31,7 @@ enum Column {
   Description,
   Features,
   Images,
+  RowCount,
 }
 
 type ResultProduct = Record<Column, string | number>;
@@ -57,13 +58,19 @@ export function OptoLider() {
       );
 
       allResultJson = allResultJson.filter(product => !!product[Column.Price]);
+      const { withRow, withoutRow } = separateWithRowProducts(allResultJson);
 
-      const resultSheet = XLSX.utils.json_to_sheet(allResultJson, { skipHeader: true });
+      const withRowResultSheet = XLSX.utils.json_to_sheet(withRow, { skipHeader: true });
+      const withoutRowResultSheet = XLSX.utils.json_to_sheet(withoutRow, { skipHeader: true });
 
-      const resultWb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(resultWb, resultSheet, 'Sheet1');
+      const withRowResultWb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(withRowResultWb, withRowResultSheet, 'Sheet1');
 
-      savePriceAsCSV(resultWb, 'ОптоЛидер');
+      const withoutRowResultWb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(withoutRowResultWb, withoutRowResultSheet, 'Sheet1');
+
+      savePriceAsCSV(withRowResultWb, 'ОптоЛидер Ряды');
+      savePriceAsCSV(withoutRowResultWb, 'ОптоЛидер');
     })();
   }, [all]);
 
@@ -80,6 +87,7 @@ export function OptoLider() {
 }
 
 const featuresFilterRegExp = /^(Дропшиппинг|от \d+? шт).+$/i;
+const featuresFilterRowCountRegExp = /^(Заказ от: \d+? шт).*$/i;
 
 function calcResultJson(wb: XLSX.WorkBook) {
   const json = XLSX.utils.sheet_to_json<Product>(wb.Sheets[wb.SheetNames[0]]);
@@ -93,15 +101,55 @@ function calcResultJson(wb: XLSX.WorkBook) {
     [Column.Description]: calculateDescription(item['Описание'] || ''),
     [Column.Features]: calculateFeatures(item['Все характеристики'] || '', featuresFilterRegExp),
     [Column.Images]: item['Изображение'],
+    [Column.RowCount]: '',
   }));
 
   return resultJson;
+}
+
+function separateWithRowProducts(
+  allProducts: ResultProduct[],
+): { withRow: ResultProduct[]; withoutRow: ResultProduct[] } {
+  const withoutRow = allProducts
+    .filter(
+      product =>
+        !/Заказ от: \d+? шт/.test(product[Column.Features].toString()) ||
+        product[Column.Features].toString().includes('Заказ от: 1 шт'),
+    )
+    .map(product => ({
+      ...product,
+      [Column.Features]: calculateFeatures(
+        product[Column.Features].toString(),
+        featuresFilterRowCountRegExp,
+        '; ',
+      ),
+    }));
+
+  const withRow = allProducts
+    .filter(
+      product =>
+        /Заказ от: \d+? шт/.test(product[Column.Features].toString()) &&
+        !product[Column.Features].toString().includes('Заказ от: 1 шт'),
+    )
+    .map(product => ({
+      ...product,
+      [Column.RowCount]: product[Column.Features]
+        .toString()
+        .replace(/^.*?Заказ от: (\d+?) шт.*?$/, '$1'),
+      [Column.Features]: calculateFeatures(
+        product[Column.Features].toString(),
+        featuresFilterRowCountRegExp,
+        '; ',
+      ),
+    }));
+
+  return { withRow, withoutRow };
 }
 
 function calculateVendorCode(link: string) {
   return link.replace(/^.+?\/product\/(.+?)\//, '$1');
 }
 
-function calculateColor(color: string) {
-  return color.replace(/,/g, '/');
+function calculateColor(color: string | number) {
+  return String(color).replace(/,/g, '/');
 }
