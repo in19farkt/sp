@@ -19,6 +19,7 @@ type Palto = {
   РАЗМЕР: string | number;
   СОСТАВ: string;
   Ссылка: string;
+  'Название раздела': string;
   ЦВЕТ: string;
   'Цена, руб.': number;
 };
@@ -60,7 +61,7 @@ export function PaltoPenza() {
         [Column.VendorCode]: item['Артикул'],
         [Column.Name]: calculateName(item['Наименование']),
         [Column.Price]: Math.ceil(item['Цена, руб.']),
-        [Column.Category]: calculateCategory(item['Ссылка']),
+        [Column.Category]: item['Название раздела'],
         [Column.Sizes]: calculateSizes(item['РАЗМЕР']),
         [Column.Color]: item['ЦВЕТ'],
         [Column.Features]: calculateFeatures(item['Все характеристики'], featuresFilterRegExp),
@@ -87,30 +88,6 @@ export function PaltoPenza() {
       <Grid item />
     </Grid>
   );
-}
-
-const translateByCategory = {
-  'kurtki-demisezonnye': 'Куртки демисезонные',
-  'kurtki-uteplyennye': 'Куртки утепленные',
-  'palto-demisezonnoe': 'Пальто демисезонное',
-  'palto-uteplyennoe': 'Пальто утепленное',
-  plashchi: 'Плащи',
-  rasprodazha: 'Распродажа',
-};
-
-function calculateCategory(link: string) {
-  const category = link.replace(
-    /^.+?\/catalog\/(.+?)\/.+$/,
-    '$1',
-  ) as keyof typeof translateByCategory;
-
-  const translate = translateByCategory[category];
-
-  if (!translate) {
-    console.error(`Не известная категория: ${link}`);
-  }
-
-  return translate || '';
 }
 
 function calculateSizes(sizes: string | number) {

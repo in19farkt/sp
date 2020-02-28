@@ -24,7 +24,7 @@ export function App() {
             </Route>
             <Route exact path={routes.price.supplier.getRoutePath()} component={PricePage} />
             <Route exact path={routes.home.getRoutePath()} component={HomePage} />
-            <Redirect to={routes.home.getRedirectPath()} />
+            <Redirect to={routes.price.getRedirectPath()} />
           </Switch>
         </Container>
       </Box>
